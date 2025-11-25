@@ -31,7 +31,7 @@ The primary goal of this project is to demonstrate:
 
 ### 1. Clone the Repo
 ```bash
-git clone [https://github.com/yourusername/bg-remover-ngrok.git](https://github.com/yourusername/bg-remover-ngrok.git)
+git clone https://github.com/imransihab0/bg_remover_ngrok
 cd bg-remover-ngrok
 ```
 ### 2. Set up Python Environment
