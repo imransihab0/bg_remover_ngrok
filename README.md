@@ -2,7 +2,7 @@
 
 A full-stack web application that removes image backgrounds using the **Rembg** AI library. This project was built to practice deploying local **FastAPI** servers to the public internet using **Ngrok**, specifically focusing on mobile accessibility and handling tunneling headers.
 
-![Demo Screenshot](https://via.placeholder.com/800x400?text=App+Screenshot+Placeholder)
+<img width="872" height="871" alt="image" src="https://github.com/user-attachments/assets/88484614-3fc1-4409-a164-112521ef7379" />
 
 ## 🎯 Project Goal
 
