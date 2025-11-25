@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Background Remover</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg: #f3f4f6;
+            --card-bg: #ffffff;
+            --text: #1f2937;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        h1 { margin-bottom: 5px; }
+        p.subtitle { color: #6b7280; margin-top: 0; margin-bottom: 30px; }
+
+        .container {
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 800px;
+            text-align: center;
+        }
+
+        /* File Input Styling */
+        .upload-area {
+            border: 2px dashed #e5e7eb;
+            border-radius: 12px;
+            padding: 40px 20px;
+            cursor: pointer;
+            transition: border-color 0.3s;
+            position: relative;
+        }
+
+        .upload-area:hover { border-color: var(--primary); }
+
+        input[type="file"] {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .upload-icon { font-size: 40px; color: #9ca3af; margin-bottom: 10px; }
+        
+        .btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: background 0.2s;
+            display: inline-block;
+        }
+
+        .btn:hover { background-color: var(--primary-hover); }
+        .btn:disabled { background-color: #9ca3af; cursor: not-allowed; }
+
+        /* Results Area */
+        .result-container {
+            display: none; /* Hidden by default */
+            margin-top: 30px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+        }
+        
+        /* Hide explicitly via JS initially */
+        .hidden { display: none !important; }
+
+        .image-box {
+            flex: 1;
+            min-width: 300px;
+            background: #f9fafb;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .image-box h3 { margin: 0 0 10px 0; font-size: 14px; color: #4b5563; text-transform: uppercase; letter-spacing: 0.05em; }
+        
+        img {
+            width: 100%;
+            height: auto;
+            border-radius: 4px;
+            /* Checkerboard pattern for transparency */
+            background-image: linear-gradient(45deg, #e0e0e0 25%, transparent 25%), linear-gradient(-45deg, #e0e0e0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e0e0e0 75%), linear-gradient(-45deg, transparent 75%, #e0e0e0 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        }
+
+        /* Loader */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+            display: none;
+        }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .download-link {
+            display: block;
+            margin-top: 10px;
+            color: var(--primary);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Background Remover</h1>
+        <p class="subtitle">Upload an image to automatically remove the background</p>
+
+        <div class="upload-area">
+            <div class="upload-icon">📁</div>
+            <p id="file-label">Click or Drag file here to upload</p>
+            <input type="file" id="fileInput" accept="image/*">
+        </div>
+
+        <button class="btn" onclick="processImage()" id="processBtn">Remove Background</button>
+        
+        <div class="loader" id="loader"></div>
+
+        <div class="result-container hidden" id="results">
+            <div class="image-box">
+                <h3>Original</h3>
+                <img id="originalImg" src="" alt="Original">
+            </div>
+            <div class="image-box">
+                <h3>Processed</h3>
+                <img id="processedImg" src="" alt="Processed">
+                <a id="downloadBtn" class="download-link" href="#" download>Download PNG</a>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // UPDATE THIS to your current Ngrok URL (No trailing slash)
+    const API_URL = "https://getatable-romelia-unperpetuating.ngrok-free.dev"; 
+
+    const fileInput = document.getElementById("fileInput");
+    const fileLabel = document.getElementById("file-label");
+
+    // Update label when file is selected
+    fileInput.addEventListener('change', function() {
+        if (this.files && this.files[0]) {
+            fileLabel.textContent = this.files[0].name;
+        }
+    });
+
+    // Helper function to fetch image with the special Ngrok header
+    async function loadImage(url, imgId) {
+        try {
+            const response = await fetch(url, {
+                headers: { "ngrok-skip-browser-warning": "true" }
+            });
+            const blob = await response.blob();
+            const objectUrl = URL.createObjectURL(blob);
+            document.getElementById(imgId).src = objectUrl;
+        } catch (e) {
+            console.error("Error loading image:", e);
+        }
+    }
+
+    async function processImage() {
+        if (!fileInput.files.length) {
+            alert("Please select a file first!");
+            return;
+        }
+
+        const processBtn = document.getElementById("processBtn");
+        const loader = document.getElementById("loader");
+        const results = document.getElementById("results");
+
+        // UI State: Loading
+        processBtn.disabled = true;
+        processBtn.innerText = "Processing...";
+        loader.style.display = "block";
+        results.classList.add("hidden");
+
+        const formData = new FormData();
+        formData.append("file", fileInput.files[0]);
+
+        try {
+            // 1. Upload the file
+            const res = await fetch(`${API_URL}/upload`, {
+                method: "POST",
+                headers: { "ngrok-skip-browser-warning": "true" },
+                body: formData
+            });
+
+            if (!res.ok) {
+                const text = await res.text();
+                throw new Error(`Server Error: ${text}`);
+            }
+
+            const data = await res.json();
+
+            // UI State: Success
+            
+            // 2. Load images using the helper function (Bypasses Ngrok warning)
+            await loadImage(`${API_URL}${data.original}`, "originalImg");
+            await loadImage(`${API_URL}${data.processed}`, "processedImg");
+            
+            // 3. Setup download link (This might still show a warning when clicked, but that's okay)
+            const dlBtn = document.getElementById("downloadBtn");
+            dlBtn.href = `${API_URL}${data.processed}`;
+            
+            results.classList.remove("hidden");
+
+        } catch (err) {
+            console.error(err);
+            alert("Error: " + err.message);
+        } finally {
+            // Reset UI
+            processBtn.disabled = false;
+            processBtn.innerText = "Remove Background";
+            loader.style.display = "none";
+        }
+    }
+</script>
+
+</body>
+</html>
